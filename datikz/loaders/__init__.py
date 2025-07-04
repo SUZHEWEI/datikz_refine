@@ -1,7 +1,8 @@
 from contextlib import contextmanager
 from datetime import datetime
 from json import load
-from urllib.request import urlopen
+from urllib.request import Request, urlopen
+import os
 
 from datasets import (
     disable_progress_bar,
@@ -10,7 +11,14 @@ from datasets import (
 )
 
 def get_creation_time(repo):
-    return datetime.strptime(load(urlopen(f"https://api.github.com/repos/{repo}"))['created_at'], "%Y-%m-%dT%H:%M:%SZ")
+    token = os.environ.get("GITHUB_TOKEN", "")
+    headers = {
+        "User-Agent": "DaTikZ",
+    }
+    if token:
+        headers["Authorization"] = f"token {token}"
+    req = Request(f"https://api.github.com/repos/{repo}", headers=headers)
+    return datetime.strptime(load(urlopen(req))['created_at'], "%Y-%m-%dT%H:%M:%SZ")
 
 def lines_startwith(string, prefix):
     return all(line.startswith(prefix) for line in string.splitlines())
