@@ -25,21 +25,22 @@ import pymupdf
 from pymupdf import EmptyFileError
 from regex import search
 
-from datikz.loaders import (
-    arxiv,
-    chatgpt,
-    gpt4,
-    janosh_tikz,
-    latex_examples,
-    petarv_tikz,
-    pgfmanual,
-    tex_stackexchange_com,
-    texample_net,
-    tikz_favorites,
-    tikz_net,
-    openaiwatch,
-)
+# from datikz.loaders import (
+#     arxiv,
+#     chatgpt,
+#     gpt4,
+#     janosh_tikz,
+#     latex_examples,
+#     petarv_tikz,
+#     pgfmanual,
+#     tex_stackexchange_com,
+#     texample_net,
+#     tikz_favorites,
+#     tikz_net,
+#     openaiwatch,
+# )
 
+from datikz.loaders import arxiv
 logger = logging.get_logger("datasets")
 
 def batched(iterable, n):
@@ -126,32 +127,31 @@ class TikZConfig(builder.BuilderConfig):
         self.num_compile_workers = num_compile_workers
         self.size = size
         self.data_urls = {
-            "PetarV-/TikZ": "https://github.com/PetarV-/TikZ/archive/refs/heads/master.zip",
-            "janosh/tikz": "https://github.com/janosh/tikz/archive/refs/heads/main.zip",
-            "tikz_favorites": "https://github.com/f0nzie/tikz_favorites/archive/refs/heads/master.zip",
-            "LaTeX-examples": "https://github.com/MartinThoma/LaTeX-examples/archive/refs/heads/master.zip",
-            "pgfmanual": "https://github.com/pgf-tikz/pgf/archive/refs/heads/master.zip",
-            "chatgpt": "https://github.com/evanthebouncy/chatgpt-svg/raw/master/data.tsv",
-            "openaiwatch": "https://hf.co/datasets/yuntian-deng/openaiwatch/resolve/main/data/train-00000-of-00001.parquet",
+            # "PetarV-/TikZ": "https://github.com/PetarV-/TikZ/archive/refs/heads/master.zip",
+            # "janosh/tikz": "https://github.com/janosh/tikz/archive/refs/heads/main.zip",
+            # "tikz_favorites": "https://github.com/f0nzie/tikz_favorites/archive/refs/heads/master.zip",
+            # "LaTeX-examples": "https://github.com/MartinThoma/LaTeX-examples/archive/refs/heads/master.zip",
+            # "pgfmanual": "https://github.com/pgf-tikz/pgf/archive/refs/heads/master.zip",
+            # "chatgpt": "https://github.com/evanthebouncy/chatgpt-svg/raw/master/data.tsv",
+            # "openaiwatch": "https://hf.co/datasets/yuntian-deng/openaiwatch/resolve/main/data/train-00000-of-00001.parquet",
             "arxiv": list(arxiv.expand(arxiv_files)),
-            "tex.stackexchange.com": "https://archive.org/download/stackexchange/tex.stackexchange.com.7z/Posts.xml",
+            # "tex.stackexchange.com": "https://archive.org/download/stackexchange/tex.stackexchange.com.7z/Posts.xml",
         }
         self.generators = {
-            "PetarV-/TikZ": petarv_tikz.load,
-            "janosh/tikz": janosh_tikz.load,
-            "tikz_favorites": tikz_favorites.load,
-            "LaTeX-examples": latex_examples.load,
-            "pgfmanual": pgfmanual.load,
-            "chatgpt": chatgpt.load,
-            "openaiwatch": openaiwatch.load,
-            "gpt4": gpt4.load,
-            "texample.net": texample_net.load,
-            "tikz.net": tikz_net.load,
-            "pgfplots.net": tikz_net.load, # tikz.net downloader also works for this site
+            # "PetarV-/TikZ": petarv_tikz.load,
+            # "janosh/tikz": janosh_tikz.load,
+            # "tikz_favorites": tikz_favorites.load,
+            # "LaTeX-examples": latex_examples.load,
+            # "pgfmanual": pgfmanual.load,
+            # "chatgpt": chatgpt.load,
+            # "openaiwatch": openaiwatch.load,
+            # "gpt4": gpt4.load,
+            # "texample.net": texample_net.load,
+            # "tikz.net": tikz_net.load,
+            # "pgfplots.net": tikz_net.load, # tikz.net downloader also works for this site
             "arxiv": arxiv.load,
-            "tex.stackexchange.com": texse_gen
+            # "tex.stackexchange.com": texse_gen
         }
-
 
 class TikZ(builder.GeneratorBasedBuilder):
     """A TikZ corpus."""
@@ -173,10 +173,10 @@ class TikZ(builder.GeneratorBasedBuilder):
             description=str(__doc__),
             features=Features(features),
         )
-    def _split_generators(self, dl_manager):
-        urls_to_download = self.config.data_urls # type: ignore
-        extracted_files = dl_manager.download_and_extract(urls_to_download)
 
+    def _split_generators(self, dl_manager):
+        urls_to_download = self.config.data_urls  # type: ignore
+        extracted_files = dl_manager.download_and_extract(urls_to_download)
         return [
             SplitGenerator(
                 name=str(Split.TRAIN), gen_kwargs={"datasets": extracted_files}
@@ -184,15 +184,6 @@ class TikZ(builder.GeneratorBasedBuilder):
         ]
 
     def _filter_comments(self, text, patterns=r"\{}$&#&_" + "[]"):
-        """
-        Removes all comments that match the patterns. By default patterns are
-        characters with catcodes 1-8 and a few other symbols often used inside
-        TikZ code.
-
-        This may be useful for arXiv, because tikzpictures retrieved from there
-        sometimes contain old code, commented out. This is an attempt to remove
-        such comments.
-        """
         if text.lstrip().startswith("%") and any(pattern in text for pattern in patterns):
             return ""
         match = search(r"(?<![^\\]\\(\\{2})*)%", text)
@@ -206,28 +197,26 @@ class TikZ(builder.GeneratorBasedBuilder):
     def _clean(self, example, full=False):
         for key, maybe_text in example.items():
             try:
-                example[key] = sub(r"\r\n|\r", r"\n", maybe_text).strip() # normalize newlines
+                example[key] = sub(r"\r\n|\r", r"\n", maybe_text).strip()
             except TypeError:
                 pass
-        # first remove leading comments only...
         example["code"] = sub(r"^(%.*\n)*", "", example["code"]).strip()
-        if full: # ...and maybe also remove all other comments
+        if full:
             example["code"] = "".join(
                 self._filter_comments(line)
                 for line in example["code"].splitlines(keepends=True)
             ).strip()
-
         return example
 
     def _compile(self, ex):
-        output = tex2img(ex["code"], size=self.config.size) # type: ignore
+        output = tex2img(ex["code"], size=self.config.size)  # type: ignore
         ex["image"] = {"path": None, "bytes": output['image']}
         ex["pdf"] = output['pdf']
         return ex
 
     def _generate_examples(self, datasets):
-        all_tikz, generators = set(), self.config.generators # type: ignore
-        skipped, idx = 0, 1
+        all_tikz, generators = set(), self.config.generators  # type: ignore
+        skipped, idx, total = 0, 1, 0
 
         def preprocess(load, full_clean=False, *args, **kwargs):
             for ex in load(*args, **kwargs):
@@ -237,31 +226,34 @@ class TikZ(builder.GeneratorBasedBuilder):
                     yield ex
 
         def skip_on_error(loader):
-            nonlocal skipped
+            nonlocal skipped, total
             while True:
                 try:
                     yield next(loader)
-                except (ValueError, PDFPageCountError, TimeoutExpired, CalledProcessError, EmptyFileError):
-                    skipped += 1
                 except StopIteration:
                     break
+                except Exception as e:
+                    logger.warning(f"[SKIP] Sample #{total + 1} failed with error: {repr(e)}")
+                    skipped += 1
+                finally:
+                    total += 1
 
         for name, load in zip(generators.keys(), (partial(preprocess, load) for load in generators.values())):
             logger.debug("Processing examples from '%s'.", name)
             match name:
-                case "arxiv": loader = load(files=datasets[name], full_clean=True, num_workers=self.config.num_arxiv_workers) # type: ignore
-                case "chatgpt": loader = load(tsv=datasets[name])
-                case "openaiwatch": loader = map(partial(or_, dict(origin="gpt4")), load(parquet=datasets[name]))
-                case "tex.stackexchange.com": loader = load(xml_path=datasets[name])
-                case "texample.net" | "tikz.net" | "gpt4": loader = load()
-                case "pgfplots.net": loader = load(base_url=f"https://{name}")
-                case _: loader = load(directory=datasets[name])
+                case "arxiv":
+                    loader = load(files=datasets[name], full_clean=True, num_workers=self.config.num_arxiv_workers)
+                case _:  # 支持其他源可拓展
+                    loader = load(directory=datasets[name])
 
-            with Pool(self.config.num_compile_workers) as p: # type: ignore
+            with Pool(self.config.num_compile_workers) as p:  # type: ignore
                 for example in skip_on_error(p.imap_unordered(self._compile, loader)):
                     example["origin"] = example.get("origin", name)
                     yield idx, example
                     idx += 1
 
-        if skipped:
-            logger.warning(f"Couldn't compile {skipped}/{skipped+idx-1} documents.")
+        if total > 0:
+            logger.warning(
+                f"Compilation failed on {skipped}/{total} samples "
+                f"({skipped / total:.2%} failure rate)."
+            )
